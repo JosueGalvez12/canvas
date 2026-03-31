@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Pizarra de Dibujo - Canvas</title>
+    <style>
+        /* Estilos básicos para centrar el canvas */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .main-container {
+            border: 2px solid #333;
+            background-color: #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        canvas {
+            cursor: crosshair;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <main class="main-container">
+        <canvas id="main-canvas" width="1100" height="900"></canvas>
+    </main>
+
+    <script>
+        // Obtiene el elemento canvas del HTML
+        const mainCanvas = document.getElementById("main-canvas");
+
+        // Obtiene el contexto 2D para poder dibujar
+        const context = mainCanvas.getContext("2d");
+
+        // Variables para guardar la posición inicial del cursor
+        let initialX; 
+        let initialY;
+
+        // Función para dibujar líneas
+        const dibujar = (cursorX, cursorY) => {
+            context.beginPath(); // Inicia un nuevo trazo
+
+            // Mueve el "lápiz" a la posición inicial
+            context.moveTo(initialX, initialY);
+
+            // Configuración del trazo
+            context.lineWidth = 10;        // Reduje un poco el grosor para que sea más manejable
+            context.strokeStyle = "#000";  // Color negro
+            context.lineCap = "round";     // Bordes redondeados
+            context.lineJoin = "round";    // Unión de líneas suave
+
+            // Dibuja la línea hasta la nueva posición del cursor
+            context.lineTo(cursorX, cursorY);
+            context.stroke(); // Aplica el dibujo
+
+            // Actualiza la posición inicial para continuar el trazo
+            initialX = cursorX;
+            initialY = cursorY;
+        };
+
+        // Evento cuando se presiona el mouse
+        const mouseDown = (evt) => {
+            // Guarda la posición inicial del cursor dentro del canvas
+            initialX = evt.offsetX;
+            initialY = evt.offsetY;
+
+            // Dibuja un punto inicial
+            dibujar(initialX, initialY); 
+
+            // Activa el evento de movimiento del mouse
+            mainCanvas.addEventListener("mousemove", mouseMoving);
+        };
+
+        // Evento cuando el mouse se mueve
+        const mouseMoving = (evt) => {
+            // Dibuja mientras el mouse se mueve
+            dibujar(evt.offsetX, evt.offsetY);
+        };
+
+        // Evento cuando se suelta el mouse
+        const mouseUp = () => {
+            // Detiene el dibujo eliminando el evento de movimiento
+            mainCanvas.removeEventListener("mousemove", mouseMoving);
+        };
+
+        // Escucha cuando se presiona el mouse sobre el canvas
+        mainCanvas.addEventListener("mousedown", mouseDown);
+
+        // Escucha cuando se suelta el mouse (en toda la ventana para evitar errores)
+        window.addEventListener("mouseup", mouseUp);
+    </script>
+</body>
+</html>
