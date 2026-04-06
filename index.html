@@ -1,100 +1,461 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-    <title>Pizarra de Dibujo - Canvas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberDraw - Pizarra Pro</title>
+    <!-- Fuente Futu-Tech -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Iconos FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        /* Estilos básicos para centrar el canvas */
-        body {
+        :root {
+            --bg-dark: #0b0c10;
+            --panel-bg: rgba(11, 12, 16, 0.85);
+            --neon-primary: #66fcf1;
+            --neon-secondary: #45a29e;
+            --text-color: #c5c6c7;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            overflow: hidden;
+            /* Evita que aparezcan barras de scroll */
+            font-family: 'Orbitron', sans-serif;
+            color: var(--text-color);
+        }
+
+        /* Contenedor Flex para todo */
+        .app-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Canvas - Interfaz principal */
+        canvas {
+            display: block;
+            cursor: crosshair;
+            background-color: var(--bg-dark);
+            touch-action: none;
+            /* Evita scrolls al dibujar en táctil */
+        }
+
+        /* Panel lateral / flotante de herramientas */
+        .toolbar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--neon-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.3),
+                inset 0 0 10px rgba(69, 162, 158, 0.2);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            width: 220px;
+            transition: all 0.3s ease;
+        }
+
+        .toolbar:hover {
+            box-shadow: 0 0 25px rgba(102, 252, 241, 0.6),
+                inset 0 0 15px rgba(69, 162, 158, 0.4);
+        }
+
+        .header-title {
+            text-align: center;
+            font-size: 1.4rem;
+            margin: 0;
+            color: var(--neon-primary);
+            text-shadow: 0 0 8px rgba(102, 252, 241, 0.8);
+            border-bottom: 1px solid var(--neon-secondary);
+            padding-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        .tool-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tool-group label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--neon-primary);
+        }
+
+        /* Inputs Personalizados */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 100%;
+            height: 45px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+            outline: none;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 2px solid var(--neon-secondary);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(102, 252, 241, 0.3);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            margin-top: 5px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--neon-primary);
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--neon-primary);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Botones de acción */
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--neon-secondary);
+            color: var(--text-color);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
+            font-family: 'Orbitron', sans-serif;
+            outline: none;
         }
 
-        .main-container {
-            border: 2px solid #333;
-            background-color: #fff;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        button:hover {
+            background: rgba(69, 162, 158, 0.15);
+            color: var(--neon-primary);
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.4);
+            border-color: var(--neon-primary);
         }
 
-        canvas {
-            cursor: crosshair;
-            display: block;
+        button.active {
+            background: rgba(102, 252, 241, 0.15);
+            border-color: var(--neon-primary);
+            color: var(--neon-primary);
+            box-shadow: 0 0 20px rgba(102, 252, 241, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .btn-full {
+            grid-column: span 2;
+            font-weight: 700;
+            font-size: 0.9rem;
+            gap: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        #btn-download {
+            background: rgba(102, 252, 241, 0.1);
+        }
+
+        #btn-download:hover {
+            background: rgba(102, 252, 241, 0.3);
+        }
+
+        /* Responsividad para móviles */
+        @media (max-width: 768px) {
+            .toolbar {
+                top: auto;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 90%;
+                max-width: 350px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding: 15px;
+            }
+
+            .header-title {
+                display: none;
+            }
+
+            .tool-group {
+                flex: 1;
+                min-width: 100px;
+            }
+
+            .btn-grid {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+            }
+
+            .btn-grid button {
+                flex: 1;
+                font-size: 1rem;
+                padding: 10px;
+            }
         }
     </style>
 </head>
+
 <body>
 
-    <main class="main-container">
-        <canvas id="main-canvas" width="1100" height="900"></canvas>
-    </main>
+    <div class="app-container">
+        <!-- Panel Lateral / Flotante -->
+        <div class="toolbar">
+            <h1 class="header-title">CYBER DRAW</h1>
+
+            <div class="tool-group">
+                <label for="colorPicker">Color de Energía</label>
+                <!-- Color predeterminado Cian Neon -->
+                <input type="color" id="colorPicker" value="#66fcf1">
+            </div>
+
+            <div class="tool-group">
+                <label for="brushSize">Intensidad</label>
+                <input type="range" id="brushSize" min="1" max="50" value="5">
+            </div>
+
+            <div class="btn-grid">
+                <button id="btn-pen" class="active" title="Lápiz / Pincel"><i class="fas fa-pen-nib"></i></button>
+                <button id="btn-eraser" title="Borrador de Vacío"><i class="fas fa-eraser"></i></button>
+                <button id="btn-clear" class="btn-full" title="Purgar Artefactos"><i class="fas fa-trash-alt"></i>
+                    Limpiar</button>
+                <button id="btn-download" class="btn-full" title="Extraer Datos"><i class="fas fa-download"></i> Guardar
+                    PNG</button>
+            </div>
+        </div>
+
+        <!-- El Lienzo de Dibujo -->
+        <canvas id="main-canvas"></canvas>
+    </div>
 
     <script>
-        // Obtiene el elemento canvas del HTML
-        const mainCanvas = document.getElementById("main-canvas");
+        const canvas = document.getElementById("main-canvas");
+        const ctx = canvas.getContext("2d");
 
-        // Obtiene el contexto 2D para poder dibujar
-        const context = mainCanvas.getContext("2d");
+        // Elementos de la UI
+        const colorPicker = document.getElementById("colorPicker");
+        const brushSize = document.getElementById("brushSize");
+        const btnPen = document.getElementById("btn-pen");
+        const btnEraser = document.getElementById("btn-eraser");
+        const btnClear = document.getElementById("btn-clear");
+        const btnDownload = document.getElementById("btn-download");
 
-        // Variables para guardar la posición inicial del cursor
-        let initialX; 
-        let initialY;
+        // Variables de estado
+        let isDrawing = false;
+        let currentTool = 'pen';
+        let lastX = 0;
+        let lastY = 0;
 
-        // Función para dibujar líneas
-        const dibujar = (cursorX, cursorY) => {
-            context.beginPath(); // Inicia un nuevo trazo
+        // ==========================================
+        // CONFIGURACIÓN Y REDIMENSIONAMIENTO RESPONSIVO
+        // ==========================================
+        const resizeCanvas = () => {
+            // Guardar el contenido actual antes de redimensionar
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext("2d");
+            tempCtx.drawImage(canvas, 0, 0);
 
-            // Mueve el "lápiz" a la posición inicial
-            context.moveTo(initialX, initialY);
+            // Ajustar el canvas al tamaño real de la ventana
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
 
-            // Configuración del trazo
-            context.lineWidth = 10;        // Reduje un poco el grosor para que sea más manejable
-            context.strokeStyle = "#000";  // Color negro
-            context.lineCap = "round";     // Bordes redondeados
-            context.lineJoin = "round";    // Unión de líneas suave
-
-            // Dibuja la línea hasta la nueva posición del cursor
-            context.lineTo(cursorX, cursorY);
-            context.stroke(); // Aplica el dibujo
-
-            // Actualiza la posición inicial para continuar el trazo
-            initialX = cursorX;
-            initialY = cursorY;
+            // Restaurar el contenido que había
+            ctx.drawImage(tempCanvas, 0, 0);
         };
 
-        // Evento cuando se presiona el mouse
-        const mouseDown = (evt) => {
-            // Guarda la posición inicial del cursor dentro del canvas
-            initialX = evt.offsetX;
-            initialY = evt.offsetY;
+        // Inicializar tamaño del lienzo
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        window.addEventListener("resize", resizeCanvas);
 
-            // Dibuja un punto inicial
-            dibujar(initialX, initialY); 
-
-            // Activa el evento de movimiento del mouse
-            mainCanvas.addEventListener("mousemove", mouseMoving);
+        // Utils: Obtener coordendas para Mouse o Touch
+        const getPos = (e) => {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
         };
 
-        // Evento cuando el mouse se mueve
-        const mouseMoving = (evt) => {
-            // Dibuja mientras el mouse se mueve
-            dibujar(evt.offsetX, evt.offsetY);
+        // ==========================================
+        // LÓGICA DE DIBUJO CON CURVAS SUAVES
+        // ==========================================
+        const startDrawing = (e) => {
+            // Evitar comportamiento por defecto en touch
+            if (e.type === "touchstart") e.preventDefault();
+
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+
+            // Iniciar la trazada
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+
+            // Configuraciones de estilo y forma del pincel
+            ctx.lineWidth = brushSize.value;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            if (currentTool === 'eraser') {
+                // El modo destination-out "borra" haciendo transparente el trazado.
+                // En un diseño oscuro donde el fondo css es negro transparente es igual al fondo.
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.strokeStyle = "rgba(0,0,0,1)";
+                ctx.shadowBlur = 0; // Sin neón mientras se borra
+            } else {
+                ctx.globalCompositeOperation = "source-over";
+                ctx.strokeStyle = colorPicker.value;
+
+                // Efecto NEÓN para un estilo Cyberpunk/Tecnológico
+                ctx.shadowColor = colorPicker.value;
+                ctx.shadowBlur = parseInt(brushSize.value) * 0.4 + 5;
+            }
         };
 
-        // Evento cuando se suelta el mouse
-        const mouseUp = () => {
-            // Detiene el dibujo eliminando el evento de movimiento
-            mainCanvas.removeEventListener("mousemove", mouseMoving);
+        const draw = (e) => {
+            if (!isDrawing) return;
+            if (e.type === "touchmove") e.preventDefault();
+
+            const pos = getPos(e);
+            const currentX = pos.x;
+            const currentY = pos.y;
+
+            // Implementación de curvas cuadráticas para mayor suavidad (quadraticCurveTo)
+            const midX = lastX + (currentX - lastX) / 2;
+            const midY = lastY + (currentY - lastY) / 2;
+
+            ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(midX, midY);
+
+            lastX = currentX;
+            lastY = currentY;
         };
 
-        // Escucha cuando se presiona el mouse sobre el canvas
-        mainCanvas.addEventListener("mousedown", mouseDown);
+        const stopDrawing = () => {
+            if (!isDrawing) return;
+            isDrawing = false;
 
-        // Escucha cuando se suelta el mouse (en toda la ventana para evitar errores)
-        window.addEventListener("mouseup", mouseUp);
+            ctx.lineTo(lastX, lastY);
+            ctx.stroke();
+            ctx.beginPath(); // Finalizar el trazado actual
+
+            // Apagar la sombra para evitar bugs gráficos con otras operaciones
+            ctx.shadowBlur = 0;
+        };
+
+        // Eventos Mouse
+        canvas.addEventListener("mousedown", startDrawing);
+        canvas.addEventListener("mousemove", draw);
+        window.addEventListener("mouseup", stopDrawing);
+
+        // Eventos Touch (Tabletas / Móviles)
+        canvas.addEventListener("touchstart", startDrawing, { passive: false });
+        canvas.addEventListener("touchmove", draw, { passive: false });
+        window.addEventListener("touchend", stopDrawing);
+
+        // ==========================================
+        // HERRAMIENTAS Y BOTONES
+        // ==========================================
+        btnPen.addEventListener("click", () => {
+            currentTool = 'pen';
+            btnPen.classList.add("active");
+            btnEraser.classList.remove("active");
+        });
+
+        btnEraser.addEventListener("click", () => {
+            currentTool = 'eraser';
+            btnEraser.classList.add("active");
+            btnPen.classList.remove("active");
+        });
+
+        btnClear.addEventListener("click", () => {
+            // Limpia completamente el canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // DESCARGAR IMAGEN PRO
+        btnDownload.addEventListener("click", () => {
+            // Creamos un canvas temporal porque el main-canvas es transparente 
+            // pero el fondo en CSS es oscuro. Queremos que la foto tenga el fondo oscuro fiel a la estética.
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext("2d");
+
+            // Pintar nuestro fondo Cyberpunk 
+            tempCtx.fillStyle = "#0b0c10";
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // Dibujar el arte encima (tiene transparencias bien hechas por destination-out)
+            tempCtx.drawImage(canvas, 0, 0);
+
+            // Proceso de descarga
+            const link = document.createElement("a");
+            link.download = `cyber-draw-${Date.now()}.png`;
+            link.href = tempCanvas.toDataURL("image/png");
+            link.click();
+        });
+
+        // Prevenir scroll accidental en interacciones táctiles fuera de UI
+        document.body.addEventListener("touchstart", (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        document.body.addEventListener("touchmove", (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
     </script>
 </body>
+
 </html>
