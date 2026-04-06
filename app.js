@@ -2,6 +2,7 @@
 const canvasContainer = document.getElementById("canvas-container");
 const colorPicker = document.getElementById("colorPicker");
 const brushSize = document.getElementById("brushSize");
+const brushType = document.getElementById("brushType");
 const layerListEl = document.getElementById("layer-list");
 
 const tools = {
@@ -24,7 +25,8 @@ let isDrawing = false;
 let currentTool = 'pen'; 
 let isMirrorEnabled = false;
 let startX = 0, startY = 0;
-let lastX = 0, lastY = 0;
+let lastPos = {x: 0, y: 0};
+let lastMid = {x: 0, y: 0};
 
 // =============================
 // PREVIEW CANVAS (RULER)
@@ -171,6 +173,10 @@ const getPosEnd = (e) => {
 
 const configCtx = (ctx) => {
     ctx.lineWidth = brushSize.value;
+    
+    // Resetear props a defecto para curar estados previos (ejemplo: dashed line -> ruler bug)
+    ctx.shadowBlur = 0;
+    ctx.setLineDash([]);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     
@@ -180,6 +186,24 @@ const configCtx = (ctx) => {
     } else {
         ctx.globalCompositeOperation = "source-over";
         ctx.strokeStyle = colorPicker.value;
+        
+        switch (brushType.value) {
+            case "solid":
+                // defaults already set
+                break;
+            case "square":
+                ctx.lineCap = "square";
+                ctx.lineJoin = "miter";
+                break;
+            case "dashed":
+                const dashVal = parseInt(brushSize.value) * 1.5;
+                ctx.setLineDash([dashVal, dashVal]);
+                break;
+            case "shadow":
+                ctx.shadowColor = colorPicker.value;
+                ctx.shadowBlur = parseInt(brushSize.value) * 1.2 + 2;
+                break;
+        }
     }
 };
 
@@ -190,7 +214,8 @@ const startDrawing = (e) => {
     isDrawing = true;
     const pos = getPos(e);
     startX = pos.x; startY = pos.y;
-    lastX = pos.x; lastY = pos.y;
+    lastPos = pos;
+    lastMid = pos;
 };
 
 const draw = (e) => {
@@ -217,27 +242,31 @@ const draw = (e) => {
             previewCtx.stroke();
         }
     } else {
-        // Trazo Curvo Continuo
+        // Trazo Curvo Continuo Sin Gaps
         configCtx(ctx);
-        const midX = lastX + (pos.x - lastX) / 2;
-        const midY = lastY + (pos.y - lastY) / 2;
+        const mid = {
+            x: lastPos.x + (pos.x - lastPos.x) / 2,
+            y: lastPos.y + (pos.y - lastPos.y) / 2
+        };
 
         ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+        ctx.moveTo(lastMid.x, lastMid.y);
+        ctx.quadraticCurveTo(lastPos.x, lastPos.y, mid.x, mid.y);
         ctx.stroke();
 
         if (isMirrorEnabled) {
-            const mStartX = window.innerWidth - lastX;
-            const mMidX = window.innerWidth - midX;
+            const mMidX = window.innerWidth - mid.x;
+            const mLastPosX = window.innerWidth - lastPos.x;
+            const mLastMidX = window.innerWidth - lastMid.x;
+            
             ctx.beginPath();
-            ctx.moveTo(mStartX, lastY);
-            ctx.quadraticCurveTo(mStartX, lastY, mMidX, midY);
+            ctx.moveTo(mLastMidX, lastMid.y);
+            ctx.quadraticCurveTo(mLastPosX, lastPos.y, mMidX, mid.y);
             ctx.stroke();
         }
         
-        lastX = pos.x;
-        lastY = pos.y;
+        lastPos = pos;
+        lastMid = mid;
     }
 };
 
@@ -245,7 +274,8 @@ const stopDrawing = (e) => {
     if (!isDrawing) return;
     isDrawing = false;
     
-    const pos = getPosEnd(e) || {x: lastX, y: lastY};
+    // Si soltamos fuera, completamos con la última posición conocida
+    const pos = getPosEnd(e) || lastPos;
     const ctx = getActiveCtx();
     
     if (currentTool === 'ruler') {
@@ -265,18 +295,17 @@ const stopDrawing = (e) => {
             ctx.stroke();
         }
     } else {
-        // Acabar curvas
+        // Acabar curvas uniendo el último tramo desde el último midpoint hasta la posición final real de la aguja 
         configCtx(ctx);
         ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(lastX, lastY);
+        ctx.moveTo(lastMid.x, lastMid.y);
+        ctx.lineTo(lastPos.x, lastPos.y);
         ctx.stroke();
         
         if (isMirrorEnabled) {
             ctx.beginPath();
-            const mX = window.innerWidth - lastX;
-            ctx.moveTo(mX, lastY);
-            ctx.lineTo(mX, lastY);
+            ctx.moveTo(window.innerWidth - lastMid.x, lastMid.y);
+            ctx.lineTo(window.innerWidth - lastPos.x, lastPos.y);
             ctx.stroke();
         }
     }
