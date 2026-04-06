@@ -3,242 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizarra de Dibujo - Estilo Toon</title>
+    <title>ToonDraw - Pro</title>
     <!-- Fuente Estilo Caricatura -->
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
     <!-- Iconos FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        :root {
-            --canvas-bg: #8ba9df; /* No se usa directamente, ver radial-gradient */
-            --panel-bg: #fffcf2; 
-            --border-color: #2b2d42;
-            --primary: #ef233c;
-            --secondary: #4ea8de;
-            --btn-hover: #f1faee;
-            --text-color: #2b2d42;
-        }
-
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; 
-            font-family: 'Fredoka', sans-serif;
-            color: var(--text-color);
-            background-color: #ffffff; /* Fondo Blanco General */
-            background-image: radial-gradient(#d1cfcb 2px, transparent 2px); /* Patrón de puntos "comic/libreta" muy sutil */
-            background-size: 30px 30px;
-        }
-
-        .app-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        canvas {
-            display: block;
-            cursor: crosshair;
-            background-color: transparent; /* Permite ver el patrón de puntos o el fondo blanco real */
-            touch-action: none; 
-        }
-
-        .toolbar {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: var(--panel-bg);
-            border: 4px solid var(--border-color);
-            border-radius: 16px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            box-shadow: 6px 6px 0px var(--border-color); /* Sombra 3D estilo caricatura */
-            z-index: 10;
-            width: 220px;
-            transition: transform 0.2s ease;
-        }
-
-        .header-title {
-            text-align: center;
-            font-size: 1.6rem;
-            font-weight: 600;
-            margin: 0;
-            color: var(--border-color);
-            border-bottom: 3px dashed #ccc;
-            padding-bottom: 15px;
-            letter-spacing: 1px;
-        }
-
-        .tool-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .tool-group label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: var(--border-color);
-        }
-
-        /* Inputs Personalizados */
-        input[type="color"] {
-            -webkit-appearance: none;
-            border: none;
-            width: 100%;
-            height: 45px;
-            border-radius: 12px;
-            cursor: pointer;
-            background: none;
-            outline: none;
-            padding: 0;
-        }
-        input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-        input[type="color"]::-webkit-color-swatch {
-            border: 3px solid var(--border-color);
-            border-radius: 12px;
-        }
-
-        input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: #e5e5e5;
-            height: 12px;
-            border-radius: 6px;
-            border: 2px solid var(--border-color);
-            outline: none;
-            margin-top: 5px;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: var(--secondary);
-            border: 3px solid var(--border-color);
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.15);
-        }
-
-        /* Botones de acción */
-        .btn-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        button {
-            background: white;
-            border: 3px solid var(--border-color);
-            color: var(--text-color);
-            padding: 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: all 0.1s ease;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Fredoka', sans-serif;
-            font-weight: 600;
-            outline: none;
-            box-shadow: 3px 3px 0px var(--border-color);
-        }
-
-        button:hover {
-            background: var(--btn-hover);
-            transform: translate(-1px, -1px);
-            box-shadow: 4px 4px 0px var(--border-color);
-        }
-
-        button:active {
-            transform: translate(2px, 2px);
-            box-shadow: 1px 1px 0px var(--border-color);
-        }
-
-        button.active {
-            background: var(--secondary);
-            color: white;
-            border-color: var(--border-color);
-            transform: translate(2px, 2px);
-            box-shadow: 1px 1px 0px var(--border-color);
-        }
-
-        .btn-full {
-            grid-column: span 2;
-            font-size: 1rem;
-            gap: 10px;
-        }
-        
-        #btn-download {
-            background: #ffd166;
-        }
-        #btn-download:hover {
-            background: #ffc233;
-        }
-        
-        #btn-clear {
-            background: #ff6b6b;
-            color: white;
-        }
-        #btn-clear:hover {
-            background: #ff5252;
-        }
-
-        /* Responsividad para móviles */
-        @media (max-width: 768px) {
-            .toolbar {
-                top: auto;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 90%;
-                max-width: 350px;
-                flex-direction: row;
-                flex-wrap: wrap;
-                padding: 15px;
-            }
-            .header-title {
-                display: none;
-            }
-            .tool-group {
-                flex: 1;
-                min-width: 100px;
-            }
-            .btn-grid {
-                width: 100%;
-                display: flex;
-                flex-wrap: wrap;
-            }
-            .btn-grid button {
-                flex: 1;
-                font-size: 1rem;
-                padding: 10px;
-            }
-        }
-    </style>
+    <!-- CSS Externo -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="app-container">
-        <!-- Panel Lateral / Flotante -->
-        <div class="toolbar">
+        
+        <!-- Contenedor general de capas de Canvas -->
+        <div id="canvas-container">
+            <!-- Las capas se insertarán aquí dinámicamente -->
+        </div>
+
+        <!-- Panel de Herramientas Principal -->
+        <div class="panel toolbar">
             <h1 class="header-title">🎨 ToonDraw</h1>
             
             <div class="tool-group">
                 <label for="colorPicker">Color</label>
-                <!-- Color predeterminado Cartoon rojo -->
                 <input type="color" id="colorPicker" value="#ef233c">
             </div>
 
@@ -248,164 +35,31 @@
             </div>
 
             <div class="btn-grid">
-                <button id="btn-pen" class="active" title="Lápiz / Pincel"><i class="fas fa-pencil-alt"></i></button>
-                <button id="btn-eraser" title="Borrador"><i class="fas fa-eraser"></i></button>
-                <button id="btn-clear" class="btn-full" title="Borrar Todo"><i class="fas fa-trash-alt"></i> Limpiar</button>
-                <button id="btn-download" class="btn-full" title="Guardar"><i class="fas fa-download"></i> Guardar PNG</button>
+                <button id="btn-pen" class="tool-btn active" title="Lápiz / Pincel"><i class="fas fa-pencil-alt"></i></button>
+                <button id="btn-eraser" class="tool-btn" title="Borrador"><i class="fas fa-eraser"></i></button>
+                
+                <button id="btn-ruler" class="tool-btn" title="Regla (Líneas rectas)"><i class="fas fa-ruler-combined"></i></button>
+                <button id="btn-mirror" title="Espejo (Simetría Horizontal)"><i class="fas fa-arrows-alt-h"></i></button>
+                
+                <button id="btn-clear" class="btn-full" title="Limpiar Capa Actual"><i class="fas fa-trash-alt"></i> Borrar Capa</button>
+                <button id="btn-download" class="btn-full" title="Guardar PNG"><i class="fas fa-download"></i> Guardar Imagen</button>
             </div>
         </div>
 
-        <!-- El Lienzo de Dibujo -->
-        <canvas id="main-canvas"></canvas>
+        <!-- Panel de Capas -->
+        <div class="panel layers-panel">
+            <h2 class="header-title">Capas</h2>
+            
+            <button id="btn-add-layer" class="btn-full add-layer-btn"><i class="fas fa-plus"></i> Nueva Capa</button>
+
+            <div class="layer-list" id="layer-list">
+                <!-- Se poblará con JS -->
+            </div>
+        </div>
+
     </div>
 
-    <script>
-        const canvas = document.getElementById("main-canvas");
-        const ctx = canvas.getContext("2d");
-
-        const colorPicker = document.getElementById("colorPicker");
-        const brushSize = document.getElementById("brushSize");
-        const btnPen = document.getElementById("btn-pen");
-        const btnEraser = document.getElementById("btn-eraser");
-        const btnClear = document.getElementById("btn-clear");
-        const btnDownload = document.getElementById("btn-download");
-
-        let isDrawing = false;
-        let currentTool = 'pen'; 
-        let lastX = 0;
-        let lastY = 0;
-
-        const resizeCanvas = () => {
-            const tempCanvas = document.createElement("canvas");
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext("2d");
-            tempCtx.drawImage(canvas, 0, 0);
-
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            ctx.drawImage(tempCanvas, 0, 0);
-        };
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        window.addEventListener("resize", resizeCanvas);
-
-        const getPos = (e) => {
-            if (e.touches && e.touches.length > 0) {
-                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            }
-            return { x: e.clientX, y: e.clientY };
-        };
-
-        const startDrawing = (e) => {
-            if (e.type === "touchstart") e.preventDefault();
-            
-            isDrawing = true;
-            const pos = getPos(e);
-            lastX = pos.x;
-            lastY = pos.y;
-
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-
-            ctx.lineWidth = brushSize.value;
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
-
-            if (currentTool === 'eraser') {
-                ctx.globalCompositeOperation = "destination-out";
-                ctx.strokeStyle = "rgba(0,0,0,1)";
-            } else {
-                ctx.globalCompositeOperation = "source-over";
-                ctx.strokeStyle = colorPicker.value;
-            }
-        };
-
-        const draw = (e) => {
-            if (!isDrawing) return;
-            if (e.type === "touchmove") e.preventDefault();
-
-            const pos = getPos(e);
-            const currentX = pos.x;
-            const currentY = pos.y;
-
-            const midX = lastX + (currentX - lastX) / 2;
-            const midY = lastY + (currentY - lastY) / 2;
-
-            ctx.quadraticCurveTo(lastX, lastY, midX, midY);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(midX, midY);
-
-            lastX = currentX;
-            lastY = currentY;
-        };
-
-        const stopDrawing = () => {
-            if (!isDrawing) return;
-            isDrawing = false;
-            
-            ctx.lineTo(lastX, lastY);
-            ctx.stroke();
-            ctx.beginPath(); 
-        };
-
-        canvas.addEventListener("mousedown", startDrawing);
-        canvas.addEventListener("mousemove", draw);
-        window.addEventListener("mouseup", stopDrawing);
-        
-        canvas.addEventListener("touchstart", startDrawing, { passive: false });
-        canvas.addEventListener("touchmove", draw, { passive: false });
-        window.addEventListener("touchend", stopDrawing);
-
-        btnPen.addEventListener("click", () => {
-            currentTool = 'pen';
-            btnPen.classList.add("active");
-            btnEraser.classList.remove("active");
-        });
-
-        btnEraser.addEventListener("click", () => {
-            currentTool = 'eraser';
-            btnEraser.classList.add("active");
-            btnPen.classList.remove("active");
-        });
-
-        btnClear.addEventListener("click", () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        });
-
-        btnDownload.addEventListener("click", () => {
-            const tempCanvas = document.createElement("canvas");
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext("2d");
-
-            // Fondo Blanco Fijo para que parezca hoja de papel
-            tempCtx.fillStyle = "#ffffff";
-            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-            tempCtx.drawImage(canvas, 0, 0);
-
-            const link = document.createElement("a");
-            link.download = `toon-draw-${Date.now()}.png`;
-            link.href = tempCanvas.toDataURL("image/png");
-            link.click();
-        });
-
-        document.body.addEventListener("touchstart", (e) => {
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        document.body.addEventListener("touchmove", (e) => {
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-    </script>
+    <!-- Script Lógico -->
+    <script src="app.js"></script>
 </body>
 </html>
