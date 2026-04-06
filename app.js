@@ -2,31 +2,70 @@
 const canvasContainer = document.getElementById("canvas-container");
 const colorPicker = document.getElementById("colorPicker");
 const brushSize = document.getElementById("brushSize");
+const opacitySlider = document.getElementById("opacitySlider");
 const brushType = document.getElementById("brushType");
+const fillShapeCheckbox = document.getElementById("fillShape");
 const layerListEl = document.getElementById("layer-list");
+const mirrorAxisEl = document.getElementById("mirror-axis");
 
 const tools = {
     pen: document.getElementById("btn-pen"),
     eraser: document.getElementById("btn-eraser"),
-    ruler: document.getElementById("btn-ruler")
+    ruler: document.getElementById("btn-ruler"),
+    curve: document.getElementById("btn-curve"),
+    rect: document.getElementById("btn-rect"),
+    circle: document.getElementById("btn-circle")
 };
 
 const btnMirror = document.getElementById("btn-mirror");
 const btnClear = document.getElementById("btn-clear");
 const btnDownload = document.getElementById("btn-download");
 const btnAddLayer = document.getElementById("btn-add-layer");
+const btnUndo = document.getElementById("btn-undo");
 
 // State
 let layers = []; // Index 0 is the topmost layer visually
 let activeLayerIndex = 0;
 let layerCounter = 1;
 
+// Undo Stack variables
+const undoStack = [];
+const MAX_UNDO = 20;
+
+const saveState = () => {
+    if (!layers[activeLayerIndex]) return;
+    const ctx = layers[activeLayerIndex].ctx;
+    const canvas = layers[activeLayerIndex].canvas;
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    undoStack.push({
+        layerId: layers[activeLayerIndex].id,
+        data: imgData
+    });
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+};
+
+const undoCommand = () => {
+    if (undoStack.length === 0) return;
+    const lastState = undoStack.pop();
+    const layer = layers.find(l => l.id === lastState.layerId);
+    if (layer) {
+        layer.ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
+        layer.ctx.putImageData(lastState.data, 0, 0);
+    }
+};
+
 let isDrawing = false;
 let currentTool = 'pen'; 
 let isMirrorEnabled = false;
+let mirrorX = window.innerWidth / 2;
+let isDraggingMirror = false;
+
 let startX = 0, startY = 0;
 let lastPos = {x: 0, y: 0};
 let lastMid = {x: 0, y: 0};
+
+// Estado para curva ajustable
+let isAdjustingCurve = false;
 
 // =============================
 // PREVIEW CANVAS (RULER)
@@ -53,12 +92,19 @@ const resizeCanvases = () => {
 
         cvs.getContext("2d").drawImage(temp, 0, 0);
     });
+
+    if(mirrorX > window.innerWidth) {
+        mirrorX = window.innerWidth / 2;
+        mirrorAxisEl.style.left = `${mirrorX}px`;
+    }
 };
 window.addEventListener("resize", resizeCanvases);
 
 const initialSetup = () => {
     previewCanvas.width = window.innerWidth;
     previewCanvas.height = window.innerHeight;
+    mirrorX = window.innerWidth / 2;
+    mirrorAxisEl.style.left = `${mirrorX}px`;
 };
 initialSetup();
 
@@ -173,6 +219,7 @@ const getPosEnd = (e) => {
 
 const configCtx = (ctx) => {
     ctx.lineWidth = brushSize.value;
+    ctx.globalAlpha = parseFloat(opacitySlider.value) || 1;
     
     // Resetear props a defecto para curar estados previos (ejemplo: dashed line -> ruler bug)
     ctx.shadowBlur = 0;
@@ -183,9 +230,11 @@ const configCtx = (ctx) => {
     if (currentTool === 'eraser') {
         ctx.globalCompositeOperation = "destination-out";
         ctx.strokeStyle = "rgba(0,0,0,1)";
+        ctx.globalAlpha = 1; // El borrador siempre al 100% (?) Bueno, a gusto.
     } else {
         ctx.globalCompositeOperation = "source-over";
         ctx.strokeStyle = colorPicker.value;
+        ctx.fillStyle = colorPicker.value;
         
         switch (brushType.value) {
             case "solid":
@@ -207,15 +256,60 @@ const configCtx = (ctx) => {
     }
 };
 
+const getMirroredX = (x) => 2 * mirrorX - x;
+
+const drawShape = (ctxToDraw, type, x1, y1, x2, y2, cX, cY) => {
+    configCtx(ctxToDraw);
+    ctxToDraw.beginPath();
+    if (type === 'rect') {
+        ctxToDraw.rect(x1, y1, x2 - x1, y2 - y1);
+    } else if (type === 'circle') {
+        const r = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        ctxToDraw.arc(x1, y1, r, 0, Math.PI * 2);
+    } else if (type === 'line') {
+        ctxToDraw.moveTo(x1, y1);
+        ctxToDraw.lineTo(x2, y2);
+    } else if (type === 'curve') {
+        ctxToDraw.moveTo(x1, y1);
+        ctxToDraw.quadraticCurveTo(cX, cY, x2, y2);
+    }
+
+    if (fillShapeCheckbox.checked && (type === 'rect' || type === 'circle')) {
+        ctxToDraw.fill();
+    }
+    ctxToDraw.stroke();
+};
+
+const drawMirroredShape = (ctxToDraw, type, x1, y1, x2, y2, cX, cY) => {
+    if (!isMirrorEnabled) return;
+    const mx1 = getMirroredX(x1);
+    const mx2 = getMirroredX(x2);
+    const mcX = cX !== undefined ? getMirroredX(cX) : undefined;
+    drawShape(ctxToDraw, type, mx1, y1, mx2, y2, mcX, cY);
+};
+
 const startDrawing = (e) => {
     if (e.type === "touchstart") e.preventDefault();
     if (!layers[activeLayerIndex].visible) return; // No dibujar en capa oculta
 
-    isDrawing = true;
     const pos = getPos(e);
+    
+    // Si estamos en la fase 2 de curvatura
+    if (currentTool === 'curve' && isAdjustingCurve) {
+        isDrawing = true;
+        return; // Mantiene startX y lastPos como los extremos originales
+    }
+
+    isDrawing = true;
     startX = pos.x; startY = pos.y;
     lastPos = pos;
     lastMid = pos;
+    isAdjustingCurve = false; // Reset
+    
+    // Guardar estado antes de los trazos continuos
+    if (!['ruler', 'rect', 'circle', 'curve'].includes(currentTool)) {
+        saveState();
+    }
 };
 
 const draw = (e) => {
@@ -225,24 +319,24 @@ const draw = (e) => {
     const pos = getPos(e);
     const ctx = getActiveCtx();
     
-    if (currentTool === 'ruler') {
-        // En Regla usamos el Preview Canvas
+    if (['ruler', 'rect', 'circle'].includes(currentTool)) {
         previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-        configCtx(previewCtx);
-        
-        previewCtx.beginPath();
-        previewCtx.moveTo(startX, startY);
-        previewCtx.lineTo(pos.x, pos.y);
-        previewCtx.stroke();
-        
-        if (isMirrorEnabled) {
-            previewCtx.beginPath();
-            previewCtx.moveTo(window.innerWidth - startX, startY);
-            previewCtx.lineTo(window.innerWidth - pos.x, pos.y);
-            previewCtx.stroke();
+        const type = currentTool === 'ruler' ? 'line' : currentTool;
+        drawShape(previewCtx, type, startX, startY, pos.x, pos.y);
+        drawMirroredShape(previewCtx, type, startX, startY, pos.x, pos.y);
+    } else if (currentTool === 'curve') {
+        previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        if (!isAdjustingCurve) {
+            // Fase 1: Línea recta
+            drawShape(previewCtx, 'line', startX, startY, pos.x, pos.y);
+            drawMirroredShape(previewCtx, 'line', startX, startY, pos.x, pos.y);
+        } else {
+            // Fase 2: Curva usando 'pos' como punto de control y 'lastPos' como punto final
+            drawShape(previewCtx, 'curve', startX, startY, lastPos.x, lastPos.y, pos.x, pos.y);
+            drawMirroredShape(previewCtx, 'curve', startX, startY, lastPos.x, lastPos.y, pos.x, pos.y);
         }
     } else {
-        // Trazo Curvo Continuo Sin Gaps
+        // Trazo Curvo Continuo Sin Gaps (Lápiz, Borrador)
         configCtx(ctx);
         const mid = {
             x: lastPos.x + (pos.x - lastPos.x) / 2,
@@ -255,9 +349,9 @@ const draw = (e) => {
         ctx.stroke();
 
         if (isMirrorEnabled) {
-            const mMidX = window.innerWidth - mid.x;
-            const mLastPosX = window.innerWidth - lastPos.x;
-            const mLastMidX = window.innerWidth - lastMid.x;
+            const mMidX = getMirroredX(mid.x);
+            const mLastPosX = getMirroredX(lastPos.x);
+            const mLastMidX = getMirroredX(lastMid.x);
             
             ctx.beginPath();
             ctx.moveTo(mLastMidX, lastMid.y);
@@ -272,30 +366,35 @@ const draw = (e) => {
 
 const stopDrawing = (e) => {
     if (!isDrawing) return;
-    isDrawing = false;
     
-    // Si soltamos fuera, completamos con la última posición conocida
     const pos = getPosEnd(e) || lastPos;
     const ctx = getActiveCtx();
     
-    if (currentTool === 'ruler') {
-        // Plasmar preview en la capa activa
+    if (['ruler', 'rect', 'circle'].includes(currentTool)) {
+        isDrawing = false;
         previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-        
-        configCtx(ctx);
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
-        
-        if (isMirrorEnabled) {
-            ctx.beginPath();
-            ctx.moveTo(window.innerWidth - startX, startY);
-            ctx.lineTo(window.innerWidth - pos.x, pos.y);
-            ctx.stroke();
+        saveState();
+        const type = currentTool === 'ruler' ? 'line' : currentTool;
+        drawShape(ctx, type, startX, startY, pos.x, pos.y);
+        drawMirroredShape(ctx, type, startX, startY, pos.x, pos.y);
+    } else if (currentTool === 'curve') {
+        if (!isAdjustingCurve) {
+            // Fin Fase 1
+            isDrawing = false;
+            lastPos = pos; // Guardar final
+            isAdjustingCurve = true; // Empieza fase 2
+        } else {
+            // Fin Fase 2
+            isDrawing = false;
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            saveState();
+            drawShape(ctx, 'curve', startX, startY, lastPos.x, lastPos.y, pos.x, pos.y);
+            drawMirroredShape(ctx, 'curve', startX, startY, lastPos.x, lastPos.y, pos.x, pos.y);
+            isAdjustingCurve = false;
         }
     } else {
-        // Acabar curvas uniendo el último tramo desde el último midpoint hasta la posición final real de la aguja 
+        isDrawing = false;
+        // Acabar curvas continuas
         configCtx(ctx);
         ctx.beginPath();
         ctx.moveTo(lastMid.x, lastMid.y);
@@ -304,8 +403,8 @@ const stopDrawing = (e) => {
         
         if (isMirrorEnabled) {
             ctx.beginPath();
-            ctx.moveTo(window.innerWidth - lastMid.x, lastMid.y);
-            ctx.lineTo(window.innerWidth - lastPos.x, lastPos.y);
+            ctx.moveTo(getMirroredX(lastMid.x), lastMid.y);
+            ctx.lineTo(getMirroredX(lastPos.x), lastPos.y);
             ctx.stroke();
         }
     }
@@ -336,14 +435,28 @@ Object.keys(tools).forEach(t => {
 
 btnMirror.addEventListener("click", () => {
     isMirrorEnabled = !isMirrorEnabled;
-    if(isMirrorEnabled) btnMirror.classList.add('active');
-    else btnMirror.classList.remove('active');
+    if(isMirrorEnabled) {
+        btnMirror.classList.add('active');
+        mirrorAxisEl.style.display = "block";
+    } else {
+        btnMirror.classList.remove('active');
+        mirrorAxisEl.style.display = "none";
+    }
 });
 
 btnClear.addEventListener("click", () => {
+    saveState();
     const ctx = getActiveCtx();
     const cvs = layers[activeLayerIndex].canvas;
     ctx.clearRect(0, 0, cvs.width, cvs.height);
+});
+
+btnUndo.addEventListener("click", undoCommand);
+window.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        undoCommand();
+    }
 });
 
 btnDownload.addEventListener("click", () => {
@@ -372,4 +485,41 @@ btnDownload.addEventListener("click", () => {
 
 btnAddLayer.addEventListener("click", () => {
     createLayer();
+});
+
+// =============================
+// LÓGICA DE ESPEJO MÓVIL
+// =============================
+const updateMirrorAxis = (x) => {
+    mirrorX = Math.max(0, Math.min(window.innerWidth, x));
+    mirrorAxisEl.style.left = `${mirrorX}px`;
+};
+
+mirrorAxisEl.addEventListener("mousedown", (e) => {
+    isDraggingMirror = true;
+});
+
+window.addEventListener("mousemove", (e) => {
+    if (isDraggingMirror) {
+        updateMirrorAxis(e.clientX);
+    }
+});
+
+window.addEventListener("mouseup", () => {
+    isDraggingMirror = false;
+});
+
+mirrorAxisEl.addEventListener("touchstart", (e) => {
+    isDraggingMirror = true;
+    e.preventDefault();
+}, { passive: false });
+
+window.addEventListener("touchmove", (e) => {
+    if (isDraggingMirror && e.touches.length > 0) {
+        updateMirrorAxis(e.touches[0].clientX);
+    }
+}, { passive: false });
+
+window.addEventListener("touchend", () => {
+    isDraggingMirror = false;
 });

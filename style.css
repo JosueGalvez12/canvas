@@ -99,6 +99,7 @@ canvas {
 /* Inputs Personalizados */
 input[type="color"] {
     -webkit-appearance: none;
+    appearance: none;
     border: none;
     width: 100%;
     height: 45px;
@@ -118,6 +119,7 @@ input[type="color"]::-webkit-color-swatch {
 
 input[type="range"] {
     -webkit-appearance: none;
+    appearance: none;
     width: 100%;
     background: #e5e5e5;
     height: 12px;
@@ -318,4 +320,71 @@ button.active {
         max-height: 180px;
         z-index: 10;
     }
+}
+
+/* Modificadores extra UX */
+
+.tool-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: -5px;
+    margin-bottom: 5px;
+}
+
+.tool-checkbox input {
+    accent-color: var(--secondary);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.tool-checkbox label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--border-color);
+    cursor: pointer;
+}
+
+#mirror-axis {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--secondary);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+    display: none;
+    cursor: ew-resize;
+    pointer-events: auto;
+}
+
+#mirror-axis::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    left: -8px;
+    background: transparent;
+}
+
+.mirror-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--secondary);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid var(--border-color);
+    box-shadow: 2px 2px 0px var(--border-color);
+    cursor: ew-resize;
+    pointer-events: none;
 }

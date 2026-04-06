@@ -35,6 +35,11 @@
             </div>
 
             <div class="tool-group">
+                <label for="opacitySlider">Opacidad</label>
+                <input type="range" id="opacitySlider" min="0" max="1" step="0.05" value="1">
+            </div>
+
+            <div class="tool-group">
                 <label for="brushType">Tipo de Trazo</label>
                 <select id="brushType" class="custom-select">
                     <option value="solid">🔴 Sólido (Básico)</option>
@@ -44,13 +49,25 @@
                 </select>
             </div>
 
+            <div class="tool-checkbox">
+                <input type="checkbox" id="fillShape">
+                <label for="fillShape">Rellenar Figura</label>
+            </div>
+
             <div class="btn-grid">
                 <button id="btn-pen" class="tool-btn active" title="Lápiz / Pincel"><i class="fas fa-pencil-alt"></i></button>
                 <button id="btn-eraser" class="tool-btn" title="Borrador"><i class="fas fa-eraser"></i></button>
                 
-                <button id="btn-ruler" class="tool-btn" title="Regla (Líneas rectas)"><i class="fas fa-ruler-combined"></i></button>
+                <button id="btn-ruler" class="tool-btn" title="Línea Recta"><i class="fas fa-ruler-combined"></i></button>
+                <button id="btn-curve" class="tool-btn" title="Línea Curva"><i class="fas fa-bezier-curve"></i></button>
+
+                <button id="btn-rect" class="tool-btn" title="Rectángulo"><i class="far fa-square"></i></button>
+                <button id="btn-circle" class="tool-btn" title="Círculo"><i class="far fa-circle"></i></button>
+
                 <button id="btn-mirror" title="Espejo (Simetría Horizontal)"><i class="fas fa-arrows-alt-h"></i></button>
-                
+                <!-- Empty div for alignment on grid -->
+                <!-- Controles Universales -->
+                <button id="btn-undo" class="btn-full" title="Deshacer (Ctrl+Z)" style="background: #e8e8e4"><i class="fas fa-undo"></i> Deshacer Trazo</button>
                 <button id="btn-clear" class="btn-full" title="Limpiar Capa Actual"><i class="fas fa-trash-alt"></i> Borrar Capa</button>
                 <button id="btn-download" class="btn-full" title="Guardar PNG"><i class="fas fa-download"></i> Guardar Imagen</button>
             </div>
@@ -67,6 +84,11 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Guía del eje de simetría (Espejo) -->
+    <div id="mirror-axis" title="Arrastra para mover el eje">
+        <div class="mirror-handle"><i class="fas fa-arrows-alt-h"></i></div>
     </div>
 
     <!-- Script Lógico -->
